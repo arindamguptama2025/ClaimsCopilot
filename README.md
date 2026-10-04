@@ -3,7 +3,7 @@
 > A client case study: policy Q&A with citations, plain-English claims analytics, PII guardrails and a full audit trail, running entirely on a local open-weights model.
 
 **Demo video (3 min):** <!-- TODO: paste YouTube/Loom link -->
-**Screenshot:** <!-- TODO: add docs/screenshot.png and reference it: ![ClaimsCopilot](docs/screenshot.png) -->
+**Screenshot:** <!-- TODO: add docs/screenshot.png and reference it: ![ClaimsCopilot](docs/Screenshot.png) -->
 
 ---
 
