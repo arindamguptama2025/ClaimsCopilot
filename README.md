@@ -2,8 +2,7 @@
 
 > A client case study: policy Q&A with citations, plain-English claims analytics, PII guardrails and a full audit trail, running entirely on a local open-weights model.
 
-**Demo video (3 min):** <!-- TODO: paste YouTube/Loom link -->
-**Screenshot:** <!-- TODO: add docs/screenshot.png and reference it: ![ClaimsCopilot](docs/Screenshot.png) -->
+![ClaimsCopilot](docs/screenshot.png)
 
 ---
 
@@ -32,18 +31,14 @@ ClaimsCopilot is a Streamlit workbench backed by a local LLM (Gemma 3 via Ollama
 
 ```mermaid
 flowchart LR
-  U[Claims adjuster] --> UI[Streamlit UI]
-
-  subgraph Guarded LLM layer
-    G[Guardrails: PII masking + refusal policy] --> L[Gemma 3 via Ollama]
-  end
-
-  UI --> RAG[RAG: chunking + multilingual embeddings + Chroma]
-  RAG --> G
-  UI --> SQL[NL-to-SQL: SELECT-only validation]
+  U["Claims adjuster"] --> UI["Streamlit UI"]
+  UI --> RAG["RAG: chunking, multilingual embeddings, Chroma"]
+  UI --> SQL["NL-to-SQL: SELECT-only validation"]
+  RAG --> G["Guardrails: PII masking and refusal policy"]
   SQL --> G
-  SQL --> DB[(claims.db, read-only connection)]
-  G --> A[(audit.db)]
+  G --> L["Gemma 3 via Ollama"]
+  SQL --> DB[("claims.db, read-only")]
+  G --> A[("audit.db")]
   A --> UI
 ```
 
@@ -68,7 +63,7 @@ Run on synthetic data, 45 questions total.
 **Method**
 
 - *Retrieval:* questions were generated from indexed chunks by the LLM and then reviewed by hand. A hit means one of the top-5 retrieved chunks contains the source passage (matched on a text anchor, so results stay comparable when chunk size changes).
-- *Faithfulness:* an LLM judge (<!-- TODO: state the judge you actually used, e.g. "Phi-4-mini, a different model family from the generator" or "Gemma 3, the same model as the generator" -->) checks whether every claim in an answer is supported by the retrieved context. Abstentions ("I cannot find this…") are excluded from the denominator, since an abstention is trivially faithful. A control test with a deliberately fabricated answer checks that the judge can say "NO" (`evals/judge_check.py`).
+- *Faithfulness:* an LLM judge (Phi-4-mini, a different model family from the Gemma 3 generator, to reduce self-preference bias) checks whether every claim in an answer is supported by the retrieved context. Abstentions ("I cannot find this…") are excluded from the denominator, since an abstention is trivially faithful. A control test with a deliberately fabricated answer checks that the judge can say "NO" (`evals/judge_check.py`).
 - *Refusals:* 5 out-of-scope questions (weather, Mars colonization, etc.); the system should answer "I cannot find this in the provided documents."
 
 **Known failure.** "What is the CEO's salary?" was not refused: retrieval returned an unrelated clause about directors' daily allowances, and the model answered from it. Vector search always returns its nearest neighbours, even when nothing is relevant, and a small model will rationalise them. The standard fix is a relevance cutoff on retrieval distance before the LLM is called (see *Next steps*).
@@ -94,7 +89,6 @@ Baseline 72% → xx% after changing chunk size to xxx.
 | Embeddings / vector store | `paraphrase-multilingual-MiniLM-L12-v2` (sentence-transformers) + ChromaDB |
 | Structured data | SQLite (claims, audit log) |
 | Guardrails | Regex-based PII masking + rule-based refusal policy |
-| Packaging | Docker |
 
 ## 6. Project structure
 
@@ -117,7 +111,6 @@ claimscopilot/
 │   ├── tune.py             # Chunk-size / k sweep
 │   └── qa.json             # The evaluation set
 ├── data/policies/          # Synthetic policy documents
-├── Dockerfile
 └── requirements.txt
 ```
 
@@ -164,16 +157,7 @@ python -m evals.tune               # optional: chunk-size / k sweep
 
 To use a different model as judge, set `JUDGE_MODEL` before running (PowerShell: `$env:JUDGE_MODEL = "<ollama tag>"`).
 
-## 9. Run with Docker
-
-```bash
-docker build -t claimscopilot .
-docker run -p 8501:8501 claimscopilot
-```
-
-The container holds the app, demo data and vector index. The model stays on the host: Ollama must be running and reachable from the container (the image points to `host.docker.internal:11434`). On Windows, Ollama may need `OLLAMA_HOST=0.0.0.0` to accept connections from Docker.
-
-## 10. Security, privacy and responsible-AI notes
+## 9. Security, privacy and responsible-AI notes
 
 - **Data residency:** nothing leaves the machine. The model, embeddings, vector store and databases are all local.
 - **PII masking** happens before the model call *and* before the audit write, so raw identifiers are never stored. The patterns (email, phone, IBAN, Italian fiscal code) are demonstration-grade; production use needs a vetted PII-detection service and locale-specific testing.
@@ -182,7 +166,7 @@ The container holds the app, demo data and vector index. The model stays on the 
 - **Grounding:** answers must cite retrieved passages and abstain when the documents don't cover the question. The model is instructed not to give legal advice.
 - **Human in the loop:** the tool assists adjusters and does not make or recommend claim decisions.
 
-## 11. Scaling to production (AWS / Azure)
+## 10. Scaling to production (AWS / Azure)
 
 | Concern | Production approach |
 |---|---|
@@ -194,7 +178,7 @@ The container holds the app, demo data and vector index. The model stays on the 
 | **Observability and MLOps** | Tracing and cost/latency monitoring (CloudWatch / Azure Monitor, LangSmith or similar); the eval suite as a CI gate on every prompt, model or chunking change. |
 | **Compliance** | GDPR data-residency and retention rules for audit logs, ship logs to a SIEM, DPIA for the use case, human approval for any claim decision. |
 
-## 12. Next steps
+## 11. Next steps
 
 - **Relevance cutoff on retrieval** so out-of-scope questions are refused before the LLM is called (targets the known failure above).
 - **Claim intake extraction:** unstructured emails/PDFs to validated JSON, with per-field confidence and a human-review flag.
@@ -202,10 +186,10 @@ The container holds the app, demo data and vector index. The model stays on the 
 - **Fraud/risk triage:** rule-based flags (inconsistent dates, duplicates, outlier amounts) with LLM-written explanations; rules decide, the model only explains.
 - **Stronger evaluation:** a larger, human-written question set, including Italian and German, and a stronger judge model.
 
-## 13. Disclaimer
+## 12. Disclaimer
 
 Portfolio project built on **synthetic data** for a fictional insurer. It is not insurance, legal or financial advice, and it is not a production claims system.
 
 ---
 
-*Built by <Arindam Gupta> · [GitHub](https://github.com/arindamguptama2025)*
+*Built by Arindam Gupta · [GitHub](https://github.com/arindamguptama2025)*
