@@ -1,0 +1,8 @@
+{
+  "hit_rate_at_5": 0.725,
+  "faithfulness": 1.0,
+  "refusal_rate": 0.8,
+  "n_retrieval": 40,
+  "n_faithfulness": 13,
+  "n_refusal": 5
+}
